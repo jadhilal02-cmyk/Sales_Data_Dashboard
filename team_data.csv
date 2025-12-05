@@ -1,0 +1,9 @@
+Employee_ID,Full_Name,Department,Years_of_Service,Performance_Score,Review_Rating
+T101,"Smith, Alex",Engineering,5,92,Excellent
+T203,"Chen, Li",Product,2,85,Good
+T305,"Garcia, Maria",Design,8,98,Excellent
+T401,"Johnson, Ben",Engineering,1,79,Average
+T504,"Williams, Sam",Engineering,12,88,Good
+T607,"Patel, Kiran",Product,4,74,Average
+T702,"Davis, Nicole",Design,7,95,Excellent
+T806,"Brown, Tom",Engineering,3,82,Good
