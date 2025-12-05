@@ -3,7 +3,7 @@ import pandas as pd
 import io 
 
 # ------------------------------------------------
-# 0. SAMPLE DATA DEFINITION (Phase 6)
+# 0. SAMPLE DATA DEFINITION
 # ------------------------------------------------
 
 # Dataset 1: Sales Data (Original)
@@ -36,7 +36,7 @@ T806,Brown, Tom,Engineering,3,82,Good
 
 
 # ------------------------------------------------
-# 1. SETUP AND DYNAMIC DATA LOADING (Phase 4 & 6)
+# 1. SETUP AND DYNAMIC DATA LOADING
 # ------------------------------------------------
 
 st.set_page_config(layout="wide") # Use wide layout for better dashboard feel
@@ -67,7 +67,7 @@ if source_choice == 'Use Sample Data':
     st.info(f"Loaded Sample Data: **{sample_name}**")
     
 else:
-    # Existing File Uploader Logic
+    # File Uploader Logic
     st.sidebar.markdown("---")
     st.sidebar.subheader("Upload Options")
     uploaded_file = st.sidebar.file_uploader(
@@ -84,7 +84,7 @@ else:
 
 
 # ------------------------------------------------
-# 2. DYNAMIC FILTERING LOGIC (Phase 5)
+# 2. DYNAMIC FILTERING LOGIC
 # ------------------------------------------------
 
 if not df.empty:
@@ -140,7 +140,7 @@ if not df.empty:
     
     
     # ------------------------------------------------
-    # 3. DISPLAY RESULTS & METRICS (Phase 3)
+    # 3. DISPLAY RESULTS & METRICS
     # ------------------------------------------------
 
     st.subheader("Filtered Results")
@@ -151,23 +151,35 @@ if not df.empty:
     # --- Visualization and Metrics ---
     st.markdown("---")
     
-    # Logic to handle different column names for visualization
-    if len(df_final) > 0:
+    # Logic to handle different column names for visualization and safely set defaults
+    if len(df_final) > 0 and numeric_cols:
         
         st.subheader("Visual Summary")
         
-        # Determine best defaults for charting based on available columns
-        default_x = categorical_cols[0] if categorical_cols else None
-        default_y = numeric_cols[0] if numeric_cols else None
-
-        if default_x and default_y:
-            chart_x = st.selectbox("Select column for X-axis (Chart Grouping)", options=df_final.columns.tolist(), index=df_final.columns.tolist().index(default_x))
-            chart_y = st.selectbox("Select column for Y-axis (Chart Value)", options=numeric_cols, index=df_final.columns.tolist().index(default_y) if default_y in df_final.columns.tolist() else 0)
-            
-            st.bar_chart(
-                df_final.groupby(chart_x)[chart_y].sum(), # Group and sum for better chart view
-                use_container_width=True
-            )
+        # Determine best defaults for charting
+        default_x = categorical_cols[0] if categorical_cols else df_final.columns.tolist()[0]
+        default_y = numeric_cols[0]
+        
+        # --- FIX IMPLEMENTED HERE for selectbox index ---
+        x_options = df_final.columns.tolist()
+        default_x_index = x_options.index(default_x) if default_x in x_options else 0
+        
+        chart_x = st.selectbox("Select column for X-axis (Chart Grouping)", 
+                               options=x_options, 
+                               index=default_x_index)
+        
+        # Index for Y-axis MUST be calculated relative to the numeric_cols list
+        y_options = numeric_cols
+        default_y_index = y_options.index(default_y) if default_y in y_options else 0
+        
+        chart_y = st.selectbox("Select column for Y-axis (Chart Value)", 
+                               options=y_options, 
+                               index=default_y_index)
+        
+        st.bar_chart(
+            df_final.groupby(chart_x)[chart_y].sum(), # Group and sum for better chart view
+            use_container_width=True
+        )
 
         # --- Metrics (Aggregation) ---
         col1, col2 = st.columns(2)
@@ -187,6 +199,9 @@ if not df.empty:
             elif 'Years_of_Service' in df_final.columns:
                 avg_service = df_final['Years_of_Service'].mean()
                 st.metric(label="Average Years of Service", value=f"{avg_service:.1f} years")
+
+    st.markdown("---")
+
 
 # --- Instructions when no file is loaded ---
 else:
