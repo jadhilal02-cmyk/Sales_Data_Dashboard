@@ -61,7 +61,6 @@ if source_choice == 'Use Sample Data':
     
     data_to_load = SALES_DATA_CSV if sample_name == 'Sales Data (Products)' else TEAM_DATA_CSV
     
-    # Load data from string
     df = pd.read_csv(io.StringIO(data_to_load))
     st.info(f"Loaded Sample Data: **{sample_name}**")
     
@@ -154,10 +153,10 @@ if not df.empty:
         
         st.subheader("Visual Summary")
 
-        # --- Chart Type Selection (Phase 7) ---
+        # --- Chart Type Selection ---
         chart_type = st.selectbox(
             "Select Chart Type:",
-            options=['Bar Chart (Grouped)', 'Histogram (Distribution)']
+            options=['Bar Chart (Grouped)', 'Line Chart (Trend)', 'Histogram (Distribution)', 'Pie Chart (Composition)']
         )
         
         # Determine best defaults for charting
@@ -185,21 +184,50 @@ if not df.empty:
         # --- Conditional Chart Rendering ---
         
         if chart_type == 'Bar Chart (Grouped)':
-            # Bar Chart: Groups X-axis and sums the Y-axis value
             st.bar_chart(
                 df_final.groupby(chart_x)[chart_y].sum(),
                 use_container_width=True
             )
             st.caption(f"Bar Chart showing the sum of **{chart_y}** grouped by **{chart_x}**.")
 
-        elif chart_type == 'Histogram (Distribution)':
-            # Histogram: Shows the frequency distribution of a single numeric column (Y-axis)
-            st.header("Data Distribution")
-            st.histogram(
-                df_final[chart_y]
+        elif chart_type == 'Line Chart (Trend)':
+            st.line_chart(
+                data=df_final, 
+                x=chart_x, 
+                y=chart_y,
+                use_container_width=True
             )
-            st.caption(f"Histogram showing the frequency distribution of **{chart_y}**.")
+            st.caption(f"Line Chart showing the raw trend of **{chart_y}** over **{chart_x}**.")
+
+        elif chart_type == 'Histogram (Distribution)':
+            # Uses value_counts to simulate a histogram on the chosen numeric column
+            st.bar_chart(
+                df_final[chart_y].value_counts().sort_index(),
+                use_container_width=True
+            )
+            st.caption(f"Distribution Chart showing the frequency of values in **{chart_y}**.")
+
+        elif chart_type == 'Pie Chart (Composition)':
+            st.subheader(f"Composition by {chart_x}")
             
+            composition_data = df_final.groupby(chart_x)[chart_y].sum()
+            total_sum = composition_data.sum()
+            
+            if total_sum > 0:
+                composition_data = (composition_data / total_sum) * 100
+                top_groups = composition_data.sort_values(ascending=False).head(3)
+                
+                col_top = st.columns(3)
+                for i, (label, percent) in enumerate(top_groups.items()):
+                    if i < 3:
+                        col_top[i].metric(
+                            label=label, 
+                            value=f"{percent:.1f}%"
+                        )
+                st.caption("Composition analysis shown via top group percentages.")
+            else:
+                st.warning("Cannot calculate composition. Sum of selected value is zero.")
+
         
         # --- Metrics (Aggregation) ---
         col1, col2 = st.columns(2)
