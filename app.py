@@ -1,38 +1,92 @@
 import streamlit as st
 import pandas as pd
+import io 
 
 # ------------------------------------------------
-# 1. SETUP AND DYNAMIC DATA LOADING (Phase 4)
+# 0. SAMPLE DATA DEFINITION (Phase 6)
 # ------------------------------------------------
 
+# Dataset 1: Sales Data (Original)
+SALES_DATA_CSV = """
+Product_ID,Product_Name,Category,Price,Units_Sold,Region
+1,Laptop,Electronics,1200.00,50,North
+2,Headphones,Accessories,99.99,150,South
+3,Monitor,Electronics,350.50,75,North
+4,Keyboard,Accessories,75.00,200,West
+5,Webcam,Electronics,45.99,120,East
+6,Desk Lamp,Home,25.00,300,South
+7,Mouse,Accessories,15.99,500,West
+8,Coffee Maker,Home,150.00,60,North
+9,Speaker,Electronics,400.00,90,East
+10,Book Stand,Home,12.50,450,South
+"""
+
+# Dataset 2: Team Data (New)
+TEAM_DATA_CSV = """
+Employee_ID,Full_Name,Department,Years_of_Service,Performance_Score,Review_Rating
+T101,Smith, Alex,Engineering,5,92,Excellent
+T203,Chen, Li,Product,2,85,Good
+T305,Garcia, Maria,Design,8,98,Excellent
+T401,Johnson, Ben,Engineering,1,79,Average
+T504,Williams, Sam,Engineering,12,88,Good
+T607,Patel, Kiran,Product,4,74,Average
+T702,Davis, Nicole,Design,7,95,Excellent
+T806,Brown, Tom,Engineering,3,82,Good
+"""
+
+
+# ------------------------------------------------
+# 1. SETUP AND DYNAMIC DATA LOADING (Phase 4 & 6)
+# ------------------------------------------------
+
+st.set_page_config(layout="wide") # Use wide layout for better dashboard feel
 st.title("Interactive Data Analysis Dashboard")
-st.sidebar.header("Upload & Filters")
+st.sidebar.header("Data Source Selection")
 
-# File Uploader: Allows users to upload any CSV file
-uploaded_file = st.sidebar.file_uploader(
-    "Upload Your CSV File", 
-    type=["csv"]
+# User Choice: Sample vs. Upload
+source_choice = st.sidebar.radio(
+    "Choose Data Source:",
+    ('Upload Your Own CSV', 'Use Sample Data')
 )
 
-# Initialize df as an empty DataFrame
-df = pd.DataFrame() 
+df = pd.DataFrame()
 
-if uploaded_file is not None:
-    # Read the uploaded file object directly
-    try:
-        # NOTE: Using a robust read without assuming index columns.
-        df = pd.read_csv(uploaded_file) 
-        st.success("File uploaded and read successfully!")
-    except Exception as e:
-        st.error(f"Error reading file: {e}")
-        st.markdown("Please ensure the file is a clean CSV with standard comma delimiters.")
+if source_choice == 'Use Sample Data':
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("Sample Selection")
+    sample_name = st.sidebar.selectbox(
+        "Select a Sample File:",
+        options=['Sales Data (Products)', 'Team Data (Employees)']
+    )
     
+    # Load the selected sample data
+    data_to_load = SALES_DATA_CSV if sample_name == 'Sales Data (Products)' else TEAM_DATA_CSV
     
+    # Use StringIO to treat the string as a file object
+    df = pd.read_csv(io.StringIO(data_to_load))
+    st.info(f"Loaded Sample Data: **{sample_name}**")
+    
+else:
+    # Existing File Uploader Logic
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("Upload Options")
+    uploaded_file = st.sidebar.file_uploader(
+        "Upload Your CSV File", 
+        type=["csv"]
+    )
+    if uploaded_file is not None:
+        try:
+            df = pd.read_csv(uploaded_file) 
+            st.success("File uploaded and read successfully!")
+        except Exception as e:
+            st.error(f"Error reading file: {e}")
+            st.markdown("Please ensure the file is a clean CSV with standard comma delimiters.")
+
+
 # ------------------------------------------------
 # 2. DYNAMIC FILTERING LOGIC (Phase 5)
 # ------------------------------------------------
 
-# The rest of the app only runs if the DataFrame is not empty
 if not df.empty:
     
     # --- Data Preview ---
@@ -42,38 +96,31 @@ if not df.empty:
     st.sidebar.markdown("---")
     st.sidebar.subheader("Dynamic Filters")
 
-    # --- CATEGORICAL FILTER (Text Columns) ---
-    df_filtered_category = df.copy() # Start with a copy of the original data
+    # Initialize dataframes for filtering
+    df_filtered_category = df.copy()
     
-    # Find all columns that contain text data (object or string type)
+    # --- CATEGORICAL FILTER (Text Columns) ---
     categorical_cols = df.select_dtypes(include=['object', 'bool']).columns.tolist()
 
     if categorical_cols:
-        # Let the user choose which categorical column to filter on
         cat_to_filter = st.sidebar.selectbox(
             'Select Categorical Column',
             options=categorical_cols
         )
-
-        # Get the unique values from the chosen column for the multiselect options
         unique_values = df[cat_to_filter].unique()
         selected_values = st.sidebar.multiselect(
             f'Filter by {cat_to_filter}',
             options=unique_values,
             default=unique_values
         )
-        # Apply the categorical filter (OR condition)
         df_filtered_category = df[df[cat_to_filter].isin(selected_values)]
     
     
     # --- NUMERIC FILTER (Number Columns) ---
-    df_final = df_filtered_category.copy() # Start with the category-filtered data
-    
-    # Find all columns that contain numeric data (int or float type)
+    df_final = df_filtered_category.copy() 
     numeric_cols = df_final.select_dtypes(include=['number']).columns.tolist()
 
     if numeric_cols:
-        # Let the user choose which numeric column to filter on
         num_to_filter = st.sidebar.selectbox(
             'Select Numeric Column',
             options=numeric_cols
@@ -82,14 +129,13 @@ if not df.empty:
         min_val = df_final[num_to_filter].min()
         max_val = df_final[num_to_filter].max()
 
-        # Create a slider based on the min/max of the chosen column
         min_range = st.sidebar.slider(
             f'Minimum {num_to_filter}',
             min_value=min_val,
             max_value=max_val,
             value=min_val 
         )
-        # Filter 2: Apply the numeric filter (AND condition)
+        # Apply the numeric filter (AND condition)
         df_final = df_filtered_category[df_filtered_category[num_to_filter] >= min_range]
     
     
@@ -105,38 +151,43 @@ if not df.empty:
     # --- Visualization and Metrics ---
     st.markdown("---")
     
-    # Check if necessary columns exist for visualization before plotting
-    # This prevents the app from crashing if the user uploads data without specific columns
-    required_cols_for_vis = [col for col in ['Category', 'Units_Sold', 'Price'] if col in df_final.columns]
-
-    if len(required_cols_for_vis) >= 2 and 'Units_Sold' in required_cols_for_vis:
+    # Logic to handle different column names for visualization
+    if len(df_final) > 0:
+        
         st.subheader("Visual Summary")
         
-        # We rely on the user selecting meaningful columns for charting
-        chart_x = st.selectbox("Select column for X-axis (Chart Grouping)", options=df_final.columns.tolist())
-        chart_y = st.selectbox("Select column for Y-axis (Chart Value)", options=numeric_cols)
-        
-        st.bar_chart(
-            df_final, 
-            x=chart_x, 
-            y=chart_y,
-            use_container_width=True
-        )
+        # Determine best defaults for charting based on available columns
+        default_x = categorical_cols[0] if categorical_cols else None
+        default_y = numeric_cols[0] if numeric_cols else None
 
-    # --- Metrics (Aggregation) ---
-    if all(col in df_final.columns for col in ['Price', 'Units_Sold']):
-        total_units = df_final['Units_Sold'].sum()
-        total_sales = (df_final['Price'] * df_final['Units_Sold']).sum()
+        if default_x and default_y:
+            chart_x = st.selectbox("Select column for X-axis (Chart Grouping)", options=df_final.columns.tolist(), index=df_final.columns.tolist().index(default_x))
+            chart_y = st.selectbox("Select column for Y-axis (Chart Value)", options=numeric_cols, index=df_final.columns.tolist().index(default_y) if default_y in df_final.columns.tolist() else 0)
+            
+            st.bar_chart(
+                df_final.groupby(chart_x)[chart_y].sum(), # Group and sum for better chart view
+                use_container_width=True
+            )
 
+        # --- Metrics (Aggregation) ---
         col1, col2 = st.columns(2)
+        
         with col1:
-            st.metric(label="Total Units in Filter", value=f"{total_units:,.0f}")
-        with col2:
-            st.metric(label="Estimated Total Sales Value", value=f"${total_sales:,.2f}")
-    
-    st.markdown("---")
+            if 'Units_Sold' in df_final.columns:
+                total_units = df_final['Units_Sold'].sum()
+                st.metric(label="Total Units Sold in Filter", value=f"{total_units:,.0f}")
+            elif 'Performance_Score' in df_final.columns:
+                 avg_score = df_final['Performance_Score'].mean()
+                 st.metric(label="Average Performance Score", value=f"{avg_score:.1f}")
 
+        with col2:
+            if all(col in df_final.columns for col in ['Price', 'Units_Sold']):
+                total_sales = (df_final['Price'] * df_final['Units_Sold']).sum()
+                st.metric(label="Estimated Total Sales Value", value=f"${total_sales:,.2f}")
+            elif 'Years_of_Service' in df_final.columns:
+                avg_service = df_final['Years_of_Service'].mean()
+                st.metric(label="Average Years of Service", value=f"{avg_service:.1f} years")
 
 # --- Instructions when no file is loaded ---
 else:
-    st.info("👈 Please use the uploader in the sidebar to begin analysis. This tool works with any standard CSV file.")
+    st.info("👈 Please select a sample file or use the uploader to begin analysis. This tool works with any standard CSV file.")
