@@ -39,7 +39,7 @@ T806,Brown, Tom,Engineering,3,82,Good
 # 1. SETUP AND DYNAMIC DATA LOADING
 # ------------------------------------------------
 
-st.set_page_config(layout="wide") # Use wide layout for better dashboard feel
+st.set_page_config(layout="wide") 
 st.title("Interactive Data Analysis Dashboard")
 st.sidebar.header("Data Source Selection")
 
@@ -59,10 +59,9 @@ if source_choice == 'Use Sample Data':
         options=['Sales Data (Products)', 'Team Data (Employees)']
     )
     
-    # Load the selected sample data
     data_to_load = SALES_DATA_CSV if sample_name == 'Sales Data (Products)' else TEAM_DATA_CSV
     
-    # Use StringIO to treat the string as a file object
+    # Load data from string
     df = pd.read_csv(io.StringIO(data_to_load))
     st.info(f"Loaded Sample Data: **{sample_name}**")
     
@@ -151,36 +150,57 @@ if not df.empty:
     # --- Visualization and Metrics ---
     st.markdown("---")
     
-    # Logic to handle different column names for visualization and safely set defaults
     if len(df_final) > 0 and numeric_cols:
         
         st.subheader("Visual Summary")
+
+        # --- Chart Type Selection (Phase 7) ---
+        chart_type = st.selectbox(
+            "Select Chart Type:",
+            options=['Bar Chart (Grouped)', 'Histogram (Distribution)']
+        )
         
         # Determine best defaults for charting
         default_x = categorical_cols[0] if categorical_cols else df_final.columns.tolist()[0]
         default_y = numeric_cols[0]
         
-        # --- FIX IMPLEMENTED HERE for selectbox index ---
+        # --- X-Axis Selection ---
         x_options = df_final.columns.tolist()
         default_x_index = x_options.index(default_x) if default_x in x_options else 0
         
-        chart_x = st.selectbox("Select column for X-axis (Chart Grouping)", 
+        chart_x = st.selectbox("Select column for Grouping/X-axis", 
                                options=x_options, 
                                index=default_x_index)
         
-        # Index for Y-axis MUST be calculated relative to the numeric_cols list
+        # --- Y-Axis Selection ---
         y_options = numeric_cols
         default_y_index = y_options.index(default_y) if default_y in y_options else 0
         
-        chart_y = st.selectbox("Select column for Y-axis (Chart Value)", 
+        chart_y = st.selectbox("Select column for Value/Y-axis", 
                                options=y_options, 
                                index=default_y_index)
-        
-        st.bar_chart(
-            df_final.groupby(chart_x)[chart_y].sum(), # Group and sum for better chart view
-            use_container_width=True
-        )
 
+        st.markdown("---") 
+
+        # --- Conditional Chart Rendering ---
+        
+        if chart_type == 'Bar Chart (Grouped)':
+            # Bar Chart: Groups X-axis and sums the Y-axis value
+            st.bar_chart(
+                df_final.groupby(chart_x)[chart_y].sum(),
+                use_container_width=True
+            )
+            st.caption(f"Bar Chart showing the sum of **{chart_y}** grouped by **{chart_x}**.")
+
+        elif chart_type == 'Histogram (Distribution)':
+            # Histogram: Shows the frequency distribution of a single numeric column (Y-axis)
+            st.header("Data Distribution")
+            st.histogram(
+                df_final[chart_y]
+            )
+            st.caption(f"Histogram showing the frequency distribution of **{chart_y}**.")
+            
+        
         # --- Metrics (Aggregation) ---
         col1, col2 = st.columns(2)
         
