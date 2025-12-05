@@ -1,0 +1,11 @@
+Product_ID,Product_Name,Category,Price,Units_Sold,Region
+1,Laptop,Electronics,1200.00,50,North
+2,Headphones,Accessories,99.99,150,South
+3,Monitor,Electronics,350.50,75,North
+4,Keyboard,Accessories,75.00,200,West
+5,Webcam,Electronics,45.99,120,East
+6,Desk Lamp,Home,25.00,300,South
+7,Mouse,Accessories,15.99,500,West
+8,Coffee Maker,Home,150.00,60,North
+9,Speaker,Electronics,400.00,90,East
+10,Book Stand,Home,12.50,450,South
